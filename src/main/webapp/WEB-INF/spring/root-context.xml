@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+	<!-- Root Context: defines shared resources visible to all other web components -->
+		<!-- DB데이터와 관련된 경로, 서비스 등 -->
+	
+	<!-- dataSource -->
+	<bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource">
+		<property name="username" value="campfire"/>
+		<property name="password" value="campfire"/>
+		<property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+		<property name="url" value="jdbc:oracle:thin:@localhost:1521:xe"/>
+		<property name="initialSize" value="30"/>
+	</bean>
+	
+	<!-- SqlSessionConfig 클래스에서 작업했던 설정 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- db 설정정보 -->
+		<property name="dataSource" ref="dataSource" />	<!-- dataSource 정보를 가져옴 -->
+		
+		<!-- mybatis-config.xml 경로 -->
+		<property name="configLocation" value="classpath:mybatis-config.xml" />
+		
+		<!-- mapper들의 경로 -->
+		<property name="mapperLocations" value="classpath:mappers/*.xml" />
+	</bean>
+	
+	<!-- sqlSession 빈 등록 (SqlSessionFactory 빈을 생성자 주입) -->
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg ref="sqlSessionFactory" />
+	</bean>
+	
+	<!-- gmail설정 -->
+	<bean id="mailSender"
+		class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="host" value="smtp.gmail.com" />
+		<property name="port" value="587" />
+		<property name="username" value="moodnstyle1@gmail.com" /> <!-- 자신의 이메일 아이디 -->
+		<property name="password" value="moodnstyle1!@" /> <!-- 자신의 비밀번호 -->
+		<!-- 보안연결 TLS과 관련된 설정 -->
+		<property name="javaMailProperties">
+			<props>
+				<prop key="mail.smtp.starttls.enable">true</prop>
+				<prop key="mail.smtp.auth">true    </prop>
+				<prop key="mail.transport.protocol">smtp</prop>
+				<prop key="mail.debug">true</prop>
+				<prop key="mail.smtp.ssl.trust">smtp.gmail.com</prop>
+				<prop key="mail.smtp.ssl.protocols">TLSv1.2</prop>
+			</props>
+		</property>
+	</bean>
+		
+</beans>

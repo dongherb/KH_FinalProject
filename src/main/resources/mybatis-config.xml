@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+	PUBLIC "-//mybatis.org/DTD Config 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-config.dtd" >
+	
+<configuration>
+
+	<!-- setting -null 값 허용 -->
+	<settings>
+		<setting name ="jdbcTypeForNull" value="NULL" />
+	</settings>
+
+	<!-- 별칭설정 -->
+	<typeAliases>
+		<!-- 필요한 별칭을 여기에 작성 -->
+		<typeAlias type="ms.com.dto.CalendarInfoDTO" alias="CalendarInfoDTO"/>
+		<typeAlias type="ms.com.dto.ProductDTO" alias="ProductDTO"/>
+		<typeAlias type="ms.com.dto.OrderDTO" alias="OrderDTO"/>
+		<typeAlias type="ms.com.dto.OrderHistoryDTO" alias="OrderHistoryDTO"/>
+		<typeAlias type="ms.com.dto.OrderInfoDTO" alias="OrderInfoDTO"/>
+		<typeAlias type="ms.com.dto.ReviewDTO" alias="ReviewDTO"/>
+		<typeAlias type="ms.com.dto.NoticeDTO" alias="NoticeDTO"/>
+		<typeAlias type="ms.com.dto.ReportDTO" alias="ReportDTO"/>
+		<typeAlias type="ms.com.dto.MemberDTO" alias="MemberDTO"/>	
+		<typeAlias type="ms.com.dao.MemberDAO" alias="MemberDAO"/>
+		<typeAlias type="ms.com.dao.PaymentDAO" alias="PaymentDAO"/>
+		<typeAlias type="ms.com.dto.PaymentDTO" alias="PaymentDTO"/>
+		<typeAlias type="ms.com.dto.BuyerInfoDTO" alias="BuyerInfoDTO"/>
+		<typeAlias type="ms.com.dto.RecentViewDTO" alias="RecentViewDTO"/>
+		<typeAlias type="ms.com.dto.AdvertisementDTO" alias="AdvertisementDTO"/>
+		
+		<!-- 문의하기 게시판 별칭 -->
+		<typeAlias type="ms.com.dto.EnquiryDTO" alias="EnquiryDTO"/>
+		<typeAlias type="ms.com.dao.EnquiryDAO" alias="EnquiryDAO"/>
+	
+	</typeAliases>
+
+</configuration>

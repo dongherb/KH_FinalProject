@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="productMapper">
+    <select id="selectAll" resultType="ProductDTO">
+        select * from tbl_product
+    </select>
+    
+    <select id="selectOne" resultType="ProductDTO">
+        select * from tbl_product where product_code = #{product_code}
+    </select>
+    
+    <!-- productcode에 대한 정보 가져오기 -->
+    <select id="selectByProductCode" parameterType="map" resultType="ProductDTO">
+    	select * from tbl_product where product_code 
+    		<foreach collection="product_codes" item="code" separator="," open="in (" close=")">
+    			#{code} 
+    		</foreach>
+    </select>
+    
+    <insert id="insertProduct" parameterType="ProductDTO">
+        insert into tbl_product values
+            (#{product_code}, #{product_name}, #{product_content}, #{product_category}, #{detail_category}, #{price}, #{discount}, 0, #{product_img}, #{detail_img}, sysdate, default)
+    </insert>
+    
+    <!-- 제품 코드 존재 여부 확인 -->
+    <select id="checkCode" parameterType="HashMap" resultType="int">
+        select count(*), case when count(*) = 1 then 1 else 0 end from tbl_product where product_code = #{product_code}
+    </select>
+    
+    <update id="modifyProduct" parameterType="ProductDTO">
+        update tbl_product set product_name = #{product_name}, product_content = #{product_content}, product_category = #{product_category},
+            price = #{price}, discount = #{discount}, product_img = #{product_img}, detail_img = #{detail_img}
+            where product_code = #{product_code}
+    </update>
+    
+    <delete id="deleteProduct" parameterType="String">
+        delete from tbl_product where product_code = #{product_code}
+    </delete>
+    
+     <delete id="deleteChecked" parameterType="java.util.Arrays">
+        delete from tbl_product where product_code in
+            <foreach collection="array" item="sch_Val" open="(" close=")" separator=",">
+                #{sch_Val}
+            </foreach>
+    </delete>
+    
+    <!-- 검색 한 제품들의 리스트 가져오기-->
+    <select id="selectProductBySearch" parameterType="map" resultType="ProductDTO">
+        select * from (select row_number() over (order by insert_date desc) as productList, a.*
+            from tbl_product a
+        <trim prefix="where">
+            <if test="product_category != '전체' and product_category != 'All'">
+                product_category = #{product_category} and
+            </if>     
+            <if test="searchOption != 'all'">
+                ${searchOption} like '%'||#{keyword}||'%'
+            </if>
+            
+            <if test="searchOption == 'all'">
+                (product_code like '%'||#{keyword}||'%'
+                or product_name like '%'||#{keyword}||'%'
+                or price like '%'||#{keyword}||'%'
+                or discount like '%'||#{keyword}||'%')
+            </if>
+        </trim>)
+        where productList between #{startRange} and #{endRange}
+    </select>
+    
+    <!-- 검색한 제품의 총 데이터 수 가져오기 -->
+    <select id="getProductCountBySearch" parameterType="map" resultType="int">
+        select count(*) from tbl_product
+        <trim prefix="where">
+            <if test="searchOption != 'all'">
+                ${searchOption} like '%'||#{keyword}||'%'
+            </if>
+            
+            <if test="searchOption == 'all'">
+                (product_code like '%'||#{keyword}||'%'
+                or product_name like '%'||#{keyword}||'%'
+                or price like '%'||#{keyword}||'%'
+                or discount like '%'||#{keyword}||'%')
+            </if>
+        </trim>
+        <if test="product_category != '전체' and product_category != 'All'">
+    	and product_category = #{product_category}
+    	</if>
+    </select>
+
+    
+    <!-- 제품의 총 데이터 수 가져오기 / 카테고리별 (세부) -->
+    <select id="getProductCountByCategory" parameterType="map" resultType="int">
+    	select count(*) from tbl_product
+    		where (product_name like '%'||#{keyword}||'%' or product_category like '%'||#{keyword}||'%' or detail_category like '%'||#{keyword}||'%')
+    		<if test="product_category != '전체' and product_category != 'All'">
+    			and product_category = #{product_category}
+    			<if test="detail_category != '전체' and detail_category != 'All' and detail_category !=''">
+    				and detail_category = #{detail_category}
+    			</if>
+    		</if>
+    </select>
+    
+    <!-- 해당 범위안의 데이터만 리스트로 가져오기 / 카테고리별 (세부) / 순서정렬 -->
+    <select id="selectProductByCategory" parameterType="map" resultType="ProductDTO">
+    	select * from ( select row_number() over (order by
+    		<choose>
+    			<when test="option == null or option == ''">insert_date</when>
+    			<otherwise>${option}</otherwise>
+    		</choose>
+    			desc) as productList, a.*
+	    			from tbl_product a
+	    				where (product_name like '%'||#{keyword}||'%' or product_category like '%'||#{keyword}||'%' or detail_category like '%'||#{keyword}||'%')
+	    				<if test="product_category != '전체' and product_category != 'All'">
+	    					and product_category = #{product_category}
+	    					<if test="detail_category != '전체' and detail_category != 'All' and detail_category !=''">
+			    				and detail_category = #{detail_category}
+			    			</if>
+	    				</if>)
+					where productList between #{startRange} and #{endRange}
+    </select>
+    
+    <!-- 해당 범위안의 데이터만 리스트로 가져오기 / 세부 카테고리별 / 순서정렬 / 해당 제품은 제외 -->
+    <select id="selectByDetail_category" parameterType="map" resultType="ProductDTO">
+    	select * from ( select row_number() over (order by
+    		<choose>
+    			<when test="option == null or option == ''">insert_date</when>
+    			<otherwise>${option}</otherwise>
+    		</choose>
+    			desc) as productList, a.*
+	    			from tbl_product a where product_code != #{product_code}
+	    				<if test="detail_category != '전체' and detail_category != 'All' and detail_category !=''">
+	    					and detail_category = #{detail_category}
+	    				</if>)
+					where productList between #{startRange} and #{endRange}
+    </select>
+    
+    
+    <!-- 해당 제품의 평균평점 수정 -->
+    <update id="updateAvgScore_product" parameterType="map">
+    	update tbl_product set avg_score = #{avg_score}, review_count = review_count + 1
+    		where product_code = #{product_code}
+    </update>
+    
+    <!-- 리뷰삭제시 제품의 평균평점 수정 -->
+    <update id="updateAvgScoreToReturn_product" parameterType="map">
+    	update tbl_product set avg_score = #{avg_score}, review_count = review_count - 1
+    		where product_code = #{product_code}
+    </update>
+
+    <!-- 해당 제품의 구매자의 나이와 총 인원을 반환함 // 제품테이블과 관련없지만 편의상 이곳에 들어감 // 제품상세페이지에서 사용됨 -->
+    <select id="getBuyersInfo" resultType="BuyerInfoDTO">
+    	select months_between( trunc(sysdate,'year'), trunc(to_date(mb.birth_date, 'YYYYMMDD'), 'year') ) /12 +1 as age, count(*) as count
+		    from tbl_order od join tbl_member mb on od.id = mb.id
+		        where deal_status in ('구매확정', '리뷰완료') and product_code = #{product_code}
+		            group by months_between( trunc(sysdate,'year'), trunc(to_date(mb.birth_date, 'YYYYMMDD'), 'year') ) /12 +1
+    </select>
+    
+    
+</mapper>

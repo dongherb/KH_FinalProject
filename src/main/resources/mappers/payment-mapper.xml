@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="paymentMapper">
+
+	<!-- 결제 테이블에 입력 -->
+    <insert id="insert" parameterType="PaymentDTO">
+    	insert into
+    		tbl_payment values(#{pay_seq}, #{use_point}, #{pay_type}, #{pg_type}, #{origin_price}, #{real_price}, sysdate, #{card_name}, #{card_code})
+    </insert>
+    
+    <!-- pay_seq 받아오기 -->
+    <select id="getPaySeq" resultType="int">
+    	select pay_seq.nextval from dual
+    </select>
+    
+</mapper>

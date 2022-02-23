@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="memberMapper">
+
+	<!-- 아이디를 기반으로 회원의 정보를 가져옴-->
+	<select id="getMember" resultType="MemberDTO">
+		select * from tbl_member
+			where id = #{id}
+	</select>
+
+    <!-- 중복확인 -->
+	<select id="checkId" parameterType="string" resultType="int">
+		select count(*) from tbl_member where id=#{id}
+	</select>
+	
+	<!-- 회원정보삽입 -->
+	<insert id="insertMember" parameterType="MemberDTO">
+		insert into tbl_member
+			values(#{id}, #{pw}, #{name}, #{phone}, #{address}, #{birth_date}, sysdate, 0, 0, 'n', #{height}, #{weight}, #{email}, default, default)
+	</insert>
+	
+	<!-- 로그인체크 -->
+	<select id="isLoginOk" parameterType="map" resultType="int">
+		select count(*) from tbl_member where id=#{id} and pw=#{pw}
+	</select>
+	
+	<!-- 아이디 찾기 -->
+	<select id="searchId" parameterType="map" resultType="String">
+		select id from tbl_member where email = #{email} and phone=#{phone}
+	</select>
+	
+	<!-- 비밀번호 찾기(존재하는 회원인지 체크) -->
+	<select id="checkPw" parameterType="map" resultType="int">
+		select count(*) from tbl_member where id = #{id} and email=#{email}
+	</select>
+	
+	<!-- 현재 사용자의 정보를 수정함 -->
+	<update id="update_member" parameterType="MemberDTO">
+		update tbl_member
+			set address = #{address}, email = #{email}, height = #{height}, weight = #{weight}
+				where id = #{id}
+	</update>
+	
+	<!-- 해당 사용자의 포인트를 증가시킴 -->
+	<update id="updatePoint_member" parameterType="map">
+		update tbl_member
+			set total_point = total_point + #{addPoint}, extra_point = extra_point + #{addPoint}
+				where id = #{id}
+	</update>
+	
+	<!-- 해당 사용자의 포인트를 감소시킴 -->
+	<update id="descPoint_member" parameterType="map">
+		update tbl_member
+			set extra_point = extra_point - #{use_point}
+				where id = #{id}
+	</update>
+	
+	<!-- 해당 사용자를 삭제함 -->
+	<delete id="delete_member">
+		delete from tbl_member where id = #{id}
+	</delete>
+	
+	<!-- 해당 사용자의 비밀번호를 수정함 -->
+	<update id="modifyPassword_member" parameterType="map">
+		update tbl_member
+			set pw = #{pw} where id = #{id}
+	</update>
+	
+	<!-- 신고 당한 아이디의 신고 횟수를 1 늘림 -->
+	<update id="addReported_count" parameterType="String">
+	    update tbl_member set reported_count = reported_count + 1 where id = #{id}
+	</update>
+	
+	<!-- 신고 당한 아이디의 신고 횟수를 1 줄임(관리자가 신고 삭제시) -->
+	<update id="decReported_count" parameterType="String">
+	    update tbl_member set reported_count = reported_count - 1 where id = #{id}
+	</update>
+
+	
+	<!-- 관리자 영역 -->
+	<!-- 관리자: 회원정보들 불러오기 -->
+	<select id="selectAll" parameterType="map" resultType="MemberDTO">
+        select * from (select row_number() over (order by signup_date desc) as memberList, a.*
+            from tbl_member a)
+                where memberList between #{startRange} and #{endRange}
+    </select>
+    
+    <select id="getMemberCount" resultType="int">
+        select count(*) from tbl_member
+    </select>
+    
+    <!-- 회원 상태 변경 -->
+	<update id="changeState" parameterType="map">
+	    update tbl_member set state = #{state} where id = #{id}
+	</update>
+    
+    <!-- 검색 한 회원리스트 가져오기 -->
+	<select id="selectMemberBySearch" parameterType="map"
+		resultType="MemberDTO">
+		select * from (select row_number() over (order by id desc) as
+		memberList, a.*
+		from tbl_member a
+		<trim prefix="where">
+			<choose>
+			    <when test="rank == 'All'">
+			        total_point <![CDATA[>=]]>
+				    0 and
+			    </when>
+				<when test="rank == '브론즈'">
+					total_point <![CDATA[<]]>
+					100 and
+				</when>
+				<when test="rank == '실버'">
+					total_point <![CDATA[>=]]>
+					100 and total_point <![CDATA[<]]> 300 and
+				</when>
+				<when test="rank == '골드'">
+					total_point <![CDATA[>=]]>
+					300 and total_point <![CDATA[<]]> 1000 and
+				</when>
+				<when test="rank == '플래티넘'">
+					total_point <![CDATA[>=]]>
+					1000 and total_point <![CDATA[<]]> 3000 and
+				</when>
+				<when test="rank == '다이아몬드'">
+					total_point <![CDATA[>=]]>
+					3000 and
+				</when>
+			</choose>
+			<if test="searchOption != 'all'">
+				${searchOption} like '%'||#{keyword}||'%'
+			</if>
+
+			<if test="searchOption == 'all'">
+				(id like '%'||#{keyword}||'%'
+				or name like '%'||#{keyword}||'%')
+			</if>
+		</trim>
+		)
+		where memberList between #{startRange} and #{endRange}
+	</select>
+
+	<!-- 검색한 회원의 총 수 가져오기 -->
+	<select id="getMemberCountBySearch" parameterType="map"
+		resultType="int">
+		select count(*) from tbl_member
+		<trim prefix="where">
+			<if test="searchOption != 'all'">
+				${searchOption} like '%'||#{keyword}||'%'
+			</if>
+
+			<if test="searchOption == 'all'">
+				(id like '%'||#{keyword}||'%'
+				or name like '%'||#{keyword}||'%')
+			</if>
+		</trim>
+		<choose>
+		    <when test="rank == 'All'">
+		        and total_point <![CDATA[>=]]>
+				0
+		    </when>
+			<when test="rank == '브론즈'">
+				and total_point <![CDATA[<]]>
+				100
+			</when>
+			<when test="rank == '실버'">
+				and total_point <![CDATA[>=]]>
+				100
+			</when>
+			<when test="rank == '골드'">
+				and total_point <![CDATA[>=]]>
+				300
+			</when>
+			<when test="rank == '플래티넘'">
+				and total_point <![CDATA[>=]]>
+				1000
+			</when>
+			<when test="rank == '다이아몬드'">
+				and total_point <![CDATA[>=]]>
+				3000
+			</when>
+		</choose>
+	</select>
+    
+</mapper>

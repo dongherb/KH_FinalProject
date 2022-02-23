@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="orderMapper">
+
+	<!-- 주문번호로 주문내용 불러오기 -->
+	<select id="selectOneByOrder_seq" resultType="OrderDTO">
+		select * from tbl_order where order_seq = #{order_seq}
+	</select>
+
+	<!-- 장바구니 상태로 주문생성 // 장바구니 관련 -->
+	<insert id="insert_unpaidOrder" parameterType="OrderDTO">
+		insert into tbl_order values(order_seq.nextval, #{id}, #{product_code}, #{cloth_size}, #{color}, #{quantity}, '장바구니', null, null, null , null)
+	</insert>
+	
+	<!-- 결제된 상태로 수정 // 장바구니 요소 결제후에 사용됨 -->
+	<update id="updateToPaidByOrder_seq" parameterType="map">
+		update tbl_order set deal_status = '결제완료' , deal_date = sysdate , pay_seq = #{pay_seq} , deliveryAddr = #{deliveryAddr} , phone = #{phone}
+		where order_seq 
+		<foreach collection="order_seqList" item="order_seq" separator="," open="in (" close=")">
+			#{order_seq}
+		</foreach>	
+	</update>
+
+	<!-- 결제된 상태로 주문생성 // 바로 구매하기 관련 // 결제후에 사용됨 -->
+	<insert id="insert_paidOrder" parameterType="OrderDTO">
+		insert into tbl_order values(order_seq.nextval, #{id}, #{product_code}, #{cloth_size}, #{color}, #{quantity}, '결제완료', sysdate, #{pay_seq},#{deliveryAddr},#{phone})
+	</insert>
+
+	<!-- 해당 사용자의 장바구니 상태의 주문들 불러오기 -->
+    <select id="selectAll" resultType="OrderDTO">
+		select * from tbl_order where deal_status ='장바구니' and id = #{id}
+	</select>
+	
+	
+	<!-- 장바구니 수량 증가 -->
+	<update id="plusQuantity">
+		update tbl_order set quantity = quantity+1 where order_seq = #{order_seq}
+	</update>
+	
+	<!-- 장바구니 수량 감소 -->
+	<update id="minusQuantity">
+		update tbl_order set quantity = quantity-1 where order_seq = #{order_seq}
+	</update>
+	
+	<!-- 장바구니 수량 입력 -->
+	<update id="inputQuantity" parameterType="map">
+		update tbl_order set quantity = #{quantity} where order_seq = #{order_seq}
+	</update>
+	
+	<!-- 장바구니 목록 제거 -->
+	<delete  id ="deleteOrder">
+		delete from tbl_order where order_seq = #{order_seq}
+	</delete>
+	
+	<!-- 주문번호 있는지 확인 -->
+	<select id="selectOrder_seq" resultType="boolean">
+		select count(*) from tbl_order where order_seq = #{order_seq}
+	</select>
+	
+	<!-- 페이징 관련 / 주문내역에서 사용됨 -->
+	
+	<!-- 주문기록의 총 데이터 수 가져오기 / 거래상태별 -->
+    <select id="getOrderCountByStatus" resultType="int">
+    	select count(*) from tbl_order where id = #{id} and deal_status != '장바구니'
+    		<choose>
+    			<when test="deal_status == '전체' || deal_status == null"></when>
+    			<when test="deal_status == '구매확정'">
+    				and (deal_status in ('구매확정', '리뷰완료'))
+    			</when>
+    			<otherwise>and deal_status = #{deal_status}</otherwise>
+    		</choose>
+    </select>
+    
+    <!-- 해당 범위안의 데이터만 리스트로 가져오기 / 거래상태별 join 활용 -->
+    <select id="selectOrderByStatus" parameterType="map" resultType="OrderHistoryDTO">
+		select * from
+		    ( select row_number() over (order by deal_date desc) as orderList, od.*, pd.product_name, pd.product_category, pd.detail_category, pd.price, pd.discount, pd.product_img
+		        from tbl_order od left join tbl_product pd on od.product_code = pd.product_code
+		        	where id = #{id} and deal_status != '장바구니'
+		        		<choose>
+			    			<when test="deal_status == '전체' || deal_status == null"></when>
+			    			<when test="deal_status == '구매확정'">
+			    				and (deal_status in ('구매확정', '리뷰완료'))
+			    			</when>
+			    			<otherwise>and deal_status = #{deal_status}</otherwise>
+			    		</choose>)
+		        		where orderList between #{startRange} and #{endRange}
+    </select>
+	
+	<!-- 해당주문의 거래상태를 수정함 -->
+	<update id="updateStatus_order" parameterType="map">
+		update tbl_order set deal_status = #{deal_status} where order_seq = #{order_seq}
+	</update>
+
+	<!-- 결제번호로로 해당제품정보, 주문정보, 결제정보 가져오기 -->
+	<select id="selectOrderInfoByPay_seq" resultType="OrderInfoDTO">
+		select od.*, product_name, product_category, detail_category, avg_score, product_img, review_count, use_point, pay_type, pg_type, origin_price, real_price, pay_date, card_name, card_code
+    		from tbl_order od left join tbl_product pd on od.product_code = pd.product_code left join tbl_payment pm on od.pay_seq = pm.pay_seq
+            	 where od.pay_seq = #{pay_seq}
+	</select>
+	
+	<!-- /////// 관리자 페이지 영역 ///// -->
+	<!-- 주문 내역 전체 조회 -->
+	<select id="managerOrderList" parameterType="map" resultType="OrderDTO">
+	     select * from ( select row_number() over (order by order_seq desc) as orderList, a.*
+            from tbl_order a where deal_status != '장바구니')
+                where orderList between #{startRange} and #{endRange}
+	</select>
+	
+	<select id="getManagerOrderCount" resultType="int">
+	     select count(*) from tbl_order where deal_status != '장바구니'
+	</select>
+	
+	<!-- 검색 한 주문들의 리스트 가져오기-->
+    <select id="selectOrderBySearch" parameterType="map" resultType="OrderDTO">
+        select * from (select row_number() over (order by order_seq desc) as orderList, a.*
+            from tbl_order a join tbl_product p on a.product_code = p.product_code
+        <trim prefix="where">
+            deal_status != '장바구니' and     
+            <if test="searchOption != 'all'">
+                ${searchOption} like '%'||#{keyword}||'%'
+            </if>
+            
+            <if test="searchOption == 'all'">
+                (id like '%'||#{keyword}||'%'
+                or product_name like '%'||#{keyword}||'%'
+                or cloth_size like '%'||#{keyword}||'%'
+                or color like '%'||#{keyword}||'%'
+                or quantity like '%'||#{keyword}||'%'
+                or deal_status like '%'||#{keyword}||'%')
+            </if>
+        </trim>)
+        where orderList between #{startRange} and #{endRange}
+    </select>
+    
+    <!-- 검색한 제품의 총 데이터 수 가져오기 -->
+    <select id="getOrderCountBySearch" parameterType="map" resultType="int">
+        select count(*) from tbl_order o full outer join tbl_product p on o.product_code = p.product_code
+        <trim prefix="where">
+            deal_status != '장바구니' and
+            <if test="searchOption != 'all'">
+                ${searchOption} like '%'||#{keyword}||'%'
+            </if>
+            <if test="searchOption == 'all'">
+                (id like '%'||#{keyword}||'%'
+                or product_name like '%'||#{keyword}||'%'
+                or cloth_size like '%'||#{keyword}||'%'
+                or color like '%'||#{keyword}||'%'
+                or quantity like '%'||#{keyword}||'%'
+                or deal_status like '%'||#{keyword}||'%')
+            </if>
+        </trim>
+    </select>
+    
+    <!-- 제품삭제 시 장바구니 상태의 주문들 삭제 -->
+    <delete id="deleteOrderInBasket">
+    	delete from tbl_order
+    		where product_code = #{product_code} and deal_status = '장바구니'
+    </delete>
+
+</mapper>

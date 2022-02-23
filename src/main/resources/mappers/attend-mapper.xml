@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<!-- mapper 예시 // 해당 temp-mapper.xml를 지워도 상관없음 -->
+<mapper namespace="attendMapper">
+
+	<!-- 현재 날짜를 기준으로 해당 월의 첫 시작요일, 일 수를 구하기 -->
+	<select id="getCalendarInfo" resultType="CalendarInfoDTO">
+		select
+			to_char(add_months(trunc(sysdate, 'MM'), #{selectMonth}), 'YYYY') as year,
+		    to_char(add_months(trunc(sysdate, 'MM'), #{selectMonth}), 'MM') as month,
+		    to_char(add_months(trunc(sysdate, 'MM'), #{selectMonth}), 'd') as firstDay,
+		    last_day(add_months(trunc(sysdate, 'MM'), #{selectMonth})) - trunc(add_months(trunc(sysdate, 'MM'), #{selectMonth})) + 1 as numberOfDays
+		from dual
+	</select>
+
+	<!-- 출석시 출석날짜 삽입 -->
+    <insert id="insert_attend">
+        insert into tbl_attend values(#{id}, to_date(to_char(sysdate, 'YYYYMMDD'), 'YYYYMMDD'))
+    </insert>
+
+    <!-- 현재날짜에 이미 출석이 존재하는지 확인 -->
+    <select id="checkEnter_attend" resultType="boolean">
+        	select count(*) from tbl_attend
+            where id= #{id} and enter_date = to_date(to_char(sysdate, 'YYYYMMDD'), 'YYYYMMDD')
+    </select>
+	
+	<!-- 현재 날짜를 기준으로 해당 월의 첫 날과 마지막날 사이의 출석일 가져오기 -->
+	<select id="getEnteredDays_attend" parameterType="map" resultType="String">
+		select to_char(enter_date,'dd') as day from tbl_attend
+			where ( id= #{id} ) and
+			( enter_date between trunc(add_months(trunc(sysdate, 'MM'), #{selectMonth})) and last_day(add_months(trunc(sysdate, 'MM'), #{selectMonth})) )
+	</select>
+	
+</mapper>

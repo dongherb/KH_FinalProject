@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="reportMapper">
+
+    <select id="selectAll" parameterType="map" resultType="reportDTO">
+        select * from (select row_number() over (order by report_seq desc) as reportList, a.*
+            from tbl_report a)
+                where reportList between #{startRange} and #{endRange}
+    </select>
+    
+    <select id="alreadyReport" parameterType="reportDTO" resultType="int">
+        select count(*) from tbl_report where review_seq = #{review_seq} and id = #{id}
+    </select>
+    
+    <insert id="insertReport" parameterType="reportDTO">
+        insert into tbl_report values
+           (report_seq.nextval, #{id}, #{review_seq}, #{category}, #{reason})
+    </insert>
+    
+    <delete id="deleteReport" parameterType="Integer">
+        delete from tbl_report where report_seq = #{report_seq}
+    </delete>
+    
+    <delete id="deleteChecked" parameterType="java.util.Arrays">
+        delete from tbl_report where report_seq in
+            <foreach collection="array" item="sch_Val" open="(" close=")" separator=",">
+                #{sch_Val}
+            </foreach>
+    </delete>
+    
+    <select id="getReportCount" resultType="int">
+        select count(*) from tbl_report
+    </select>
+    
+    <!-- 신고번호의 리뷰번호를 반환 -->
+    <select id="selectReview_seqByReport_seq" resultType="int">
+    	select review_seq from tbl_report where report_seq = #{report_seq}
+    </select>
+    
+    <!-- 검색 한 신고들의 리스트 가져오기-->
+    <select id="selectReportBySearch" parameterType="map" resultType="ReportDTO">
+        select * from (select row_number() over (order by report_seq desc) as reportList, rp.*
+            from tbl_report rp full outer join tbl_review rv on rp.review_seq =rv.review_seq
+        <trim prefix="where">
+            report_seq is not null and
+            <if test="category != '전체' and category != 'All'">
+                category = #{category} and
+            </if>     
+            <if test="searchOption != 'all'">
+                ${searchOption} like '%'||#{keyword}||'%'
+            </if>
+            
+            <if test="searchOption == 'all'">
+                (rv.id like '%'||#{keyword}||'%'
+                or content like '%'||#{keyword}||'%'
+                or reason like '%'||#{keyword}||'%')
+            </if>
+        </trim>)
+        where reportList between #{startRange} and #{endRange}
+    </select>
+    
+    <!-- 검색한 신고의 총 데이터 수 가져오기 -->
+    <select id="getReportCountBySearch" parameterType="map" resultType="int">
+        select count(*) from tbl_report rp full outer join tbl_review rv on rp.review_seq =rv.review_seq
+        <trim prefix="where">
+            report_seq is not null and
+            <if test="searchOption != 'all'">
+                ${searchOption} like '%'||#{keyword}||'%'
+            </if>
+            
+            <if test="searchOption == 'all'">
+                (rv.id like '%'||#{keyword}||'%'
+                or content like '%'||#{keyword}||'%'
+                or reason like '%'||#{keyword}||'%')
+            </if>
+        </trim>
+        <if test="category != '전체' and category != 'All'">
+    	and category = #{category}
+    	</if>
+    </select>
+    
+</mapper>

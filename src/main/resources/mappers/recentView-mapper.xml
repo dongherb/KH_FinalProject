@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="recentViewMapper">
+    
+    <!-- 최근상품 불러오기 -->
+    <select id="selectAllById_recentView" resultType="RecentViewDTO">
+    	select * from tbl_recentView where id = #{id} order by view_date desc
+    </select>
+    
+    <!-- 해당 상품의 뷰 기록을 삭제함 -->
+    <delete id="deleteOneByProduct_code_recentView" parameterType="map">
+    	delete from tbl_recentView where product_code = #{product_code} and id = #{id}
+    </delete>
+    
+    <!-- 해당 제품의 뷰 기록을 삽입 -->
+    <insert id="insertView_recentView" parameterType="RecentViewDTO">
+    	insert into tbl_recentView values(#{id}, #{product_code}, #{product_img}, sysdate)
+    </insert>
+    
+    <!-- 삽입 후 최시순 3개의 데이터 빼고 남겨둠 -->
+    <delete id="deleteAllByRow_num_recentView">
+    	delete from tbl_recentView where product_code in
+		    (select product_code from
+		    	( select row_number() over (order by view_date desc) as productList, a.product_code
+		        	from tbl_recentView a where id= #{id}
+		        ) where productList > 3
+		     )
+    </delete>
+    
+    
+</mapper>

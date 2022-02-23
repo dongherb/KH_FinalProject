@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="noticeMapper">
+
+    <select id="selectAll" parameterType="map" resultType="NoticeDTO">
+        select * from ( select row_number() over (order by written_date desc) as noticeList, a.*
+            from tbl_notice a)
+                where noticeList between #{startRange} and #{endRange}
+    </select>
+
+    <select id="selectOne" resultType="NoticeDTO">
+        select * from tbl_notice where notice_seq = #{notice_seq}
+    </select>
+
+    <insert id="insertNotice" parameterType="NoticeDTO">
+        insert into tbl_notice values
+            (notice_seq.nextval, #{title}, #{content}, #{notice_img}, sysdate)
+    </insert>
+    
+    <update id="modifyNotice" parameterType="NoticeDTO">
+        update tbl_notice set title=#{title}, content=#{content}, notice_img=#{notice_img}
+            where notice_seq = #{notice_seq}
+    </update>
+    
+    <delete id="deleteNotice" parameterType="int">
+        delete from tbl_notice where notice_seq = #{notice_seq}
+    </delete>
+    
+    <delete id="deleteChecked" parameterType="java.util.Arrays">
+        delete from tbl_notice where notice_seq in
+            <foreach collection="array" item="sch_Val" open="(" close=")" separator=",">
+                #{sch_Val}
+            </foreach>
+    </delete>
+    
+    <select id="getNoticeCount" resultType="int">
+        select count(*) from tbl_notice
+    </select>
+    
+    <!-- 검색 한 제품들의 리스트 가져오기-->
+    <select id="selectNoticeBySearch" parameterType="map" resultType="NoticeDTO">
+        select * from (select row_number() over (order by written_date desc) as noticeList, a.*
+            from tbl_notice a
+            where
+                (title like '%'||#{keyword}||'%'
+                or content like '%'||#{keyword}||'%')
+        )
+        where noticeList between #{startRange} and #{endRange}
+    </select>
+    
+    <!-- 검색한 제품의 총 데이터 수 가져오기 -->
+    <select id="getNoticeCountBySearch" parameterType="String" resultType="int">
+        select count(*) from tbl_notice
+            where
+                (title like '%'||#{keyword}||'%'
+                or content like '%'||#{keyword}||'%')
+    </select>
+    
+</mapper>

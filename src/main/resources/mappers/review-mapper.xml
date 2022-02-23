@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="reviewMapper">
+    
+    <!-- 해당 제품에 대한 리뷰의 총 데이터수 가져오기 -->
+    <select id="getReviewCountByProduct" resultType="int">
+    	select count(*) from tbl_review where product_code = #{product_code}
+    </select>
+    
+    <!-- 해당 범위안의 제품에 대한 리뷰만 리스트로 가져오기 -->
+    <select id="selectReviewByProduct" parameterType="map" resultType="ReviewDTO">
+    	select review_seq, product_code, order_seq, nvl(id, '탈퇴한 회원') as id, content, height, weight, score, written_date, review_img
+    		from ( select row_number() over (order by written_date desc) as reviewList, a.*
+    			from tbl_review a where product_code = #{product_code})
+					where reviewList between #{startRange} and #{endRange}
+    </select>
+    
+    <!-- 모든 리뷰 정보 가져오기 -->
+    <select id="selectAll" resultType="ReviewDTO">
+        select * from tbl_review
+    </select>
+    
+    <!-- 이미지가 저장된 해당범위안의 리뷰만 리스트로 가져오기 (정렬컬럼 포함) -->
+    <select id="selectReviewWithImg" parameterType="map" resultType="ReviewDTO">
+    	select * from ( select row_number() over (order by ${option} desc) as reviewList, a.*
+    		from tbl_review a where review_img is not null)
+					where reviewList between #{startRange} and #{endRange}
+    </select>
+
+    <!-- 리뷰데이터 삽입 // 키, 몸무게, 이미지는 null 가능 -->
+    <insert id="insert_review" parameterType="ReviewDTO">
+    	insert into tbl_review
+    		values(review_seq.nextval, #{product_code}, #{order_seq}, #{id}, #{content}, #{height}, #{weight}, #{score}, sysdate, #{review_img})
+    </insert>
+    
+    <!-- 리뷰데이터 삭제 -->
+    <delete id="delete_review" parameterType="Integer">
+        delete from tbl_review where review_seq = #{review_seq}
+    </delete>
+    
+    <!-- 체크된 리뷰데이터들 삭제 -->
+    <delete id="deleteChecked" parameterType="java.util.Arrays">
+        delete from tbl_review where report_seq in
+            <foreach collection="array" item="sch_Val" open="(" close=")" separator=",">
+                #{sch_Val}
+            </foreach>
+    </delete>
+    
+    <!-- 리뷰 존재 여부 확인 -->
+    <select id="checkReviewExist" parameterType="int" resultType="int">
+        select count(*) from tbl_review where review_seq = #{review_seq}
+    </select>
+    
+	<!-- 해당제품에 이미 리뷰를 작성했는지 검사 -->
+    <select id="checkReview_review" parameterType="map" resultType="int">
+    	select count(*) from tbl_review
+    		where id = #{id} and product_code = #{product_code} and order_seq = #{order_seq}
+    </select>
+    
+    <!-- 주문번호로 해당 리뷰정보 불러오기 -->	<!-- 오류로 인해 같은조건의 2개의 리뷰가 존재할 수도 있으니 가장 최근의 리뷰만을 반환하게함 (1개만 반환되어야함) -->
+    <select id="getReviewByOrder_seq" resultType="ReviewDTO">
+    	select * from (select row_number() over (order by written_date desc) as reviewList, a.*
+    		from tbl_review a where order_seq = #{order_seq} )
+    			where reviewList = 1
+    </select>
+    
+    <!-- 리뷰번호로 리뷰정보 불러오기 -->
+    <select id="selectReviewByReview_seq" resultType="ReviewDTO">
+    	select * from tbl_review where review_seq = #{review_seq}
+    </select>
+    
+</mapper>
